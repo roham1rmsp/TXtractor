@@ -18,23 +18,14 @@ class Inference:
 		self.W, self.H = self.image.shape[:2][::-1]
 		self.__prep = Process()
 		self.__chars = list(string.ascii_uppercase + string.digits)
-		self.paths = [os.path.sep.join(name) for name in [["type_clf", "base.tflite"],
-															 ["letter_clf", "sub1.tflite"],
-															 ["digit_clf", "sub2.tflite"]]]
+		self.paths = [os.path.sep.join(name) for name in [["binded", "binded.tflite"]]]
 		self.paths = [os.path.sep.join([os.getcwd().replace(
 		 			"inference", "models"), path]) for path in self.paths]
-		self.__base = lite.Interpreter(self.paths[0])
-		self.__sub1 = lite.Interpreter(self.paths[1])
-		self.__sub2 = lite.Interpreter(self.paths[2])
-		self.__base.allocate_tensors()
-		self.__sub1.allocate_tensors()
-		self.__sub2.allocate_tensors()
-		self.__base_in = self.__base.get_input_details()
-		self.__base_out = self.__base.get_output_details()
-		self.__sub1_in = self.__sub1.get_input_details()
-		self.__sub1_out = self.__sub1.get_output_details()
-		self.__sub2_in = self.__sub2.get_input_details()
-		self.__sub2_out = self.__sub2.get_output_details()
+
+		self.__model = lite.Interpreter(self.paths[0])
+		self.__model.allocate_tensors()
+		self.__model_in = self.__model.get_input_details()
+		self.__model_out = self.__model.get_output_details()
 
 	def __process(self, image):
 		self.gray = self.__prep._to_gray(image)
@@ -52,7 +43,7 @@ class Inference:
 
 	def __find_grid(self, cnt):
 		X, Y, W, H = cv2.boundingRect(cnt)
-		if (self.W // W <= 30) and (self.H // H <= 30):
+		if (self.W // W <= 55) and (self.H // H <= 55):
 			ROI = self.gray[Y: Y + H, X: X + W]
 			_, thresh = cv2.threshold(ROI, 0, 255,
 									  cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
@@ -83,17 +74,9 @@ class Inference:
 
 	def __predict(self, grid):
 		sample = grid[0].reshape(-1, 32, 32, 1) / 255.0
-		self.__base.set_tensor(self.__base_in[0]["index"], sample)
-		self.__base.invoke()
-		pred = self.__base.get_tensor(self.__base_out[0]["index"])
-		if np.argmax(pred) == 0:
-			self.__sub1.set_tensor(self.__sub1_in[0]["index"], sample)
-			self.__sub1.invoke()
-			pred = np.argmax(self.__sub1.get_tensor(self.__sub1_out[0]["index"]))
-		else:
-			self.__sub2.set_tensor(self.__sub2_in[0]["index"], sample)
-			self.__sub2.invoke()
-			pred = np.argmax(self.__sub2.get_tensor(self.__sub2_out[0]["index"])) + 26
+		self.__model.set_tensor(self.__model_in[0]["index"], sample)
+		self.__model.invoke()
+		pred = np.argmax(self.__model.get_tensor(self.__model_out[0]["index"]))
 		return (self.__chars[pred], grid[1])
 
 	def __draw(self, predictions: tuple,
@@ -112,9 +95,8 @@ class Inference:
 		grids = self.__process_grids(cnts)
 		for grid in grids:
 			pred = self.__predict(grid)
-			print(pred[0])
 			self.__draw(pred, (0, 255, 0), (255, 255, 0))
-		
+		cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_2\\prediction.jpg", self.image)
 
 if __name__ == "__main__":
 	path = os.path.sep.join([os.getcwd().replace(
