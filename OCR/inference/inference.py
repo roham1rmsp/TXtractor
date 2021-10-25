@@ -18,9 +18,9 @@ class Inference:
         self.W, self.H = self.image.shape[:2][::-1]
         self.__prep = Process()
         self.__chars = list(
-            string.digits + string.ascii_uppercase + string.ascii_lowercase)
+            string.digits + string.ascii_uppercase)
         self.paths = [os.path.sep.join(name) for name in [
-            ["CHARS74K", "binded_case", "binded_case.tflite"]
+            ["CHARS74K", "binded", "binded.tflite"]
         ]]
         self.paths = [os.path.sep.join([os.getcwd().replace(
             "inference", "models"), path]) for path in self.paths]
@@ -29,6 +29,8 @@ class Inference:
         self.__model.allocate_tensors()
         self.__model_in = self.__model.get_input_details()
         self.__model_out = self.__model.get_output_details()
+        self.__SZ = (128, 64)
+        self.__affine_flags = cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR
 
     def __process(self, image):
         self.gray = self.__prep._to_gray(image)
@@ -72,10 +74,20 @@ class Inference:
 
     def __pad(self, grid):
         padded = cv2.resize(grid, (64, 128))
-        blank = np.ones((146, 86), np.uint8) * 255
-        blank[10:138, 10:74] = padded
+        blank = np.ones((154, 90), np.uint8) * 255
+        blank[13:141, 13:77] = padded
+        cv2.imshow("", cv2.resize(self.__deskewed(blank), (64, 128)))
         cv2.waitKey(0)
-        return np.float32(cv2.resize(blank, (64, 128)))
+        return np.float32(cv2.resize(self.__deskewed(blank), (64, 128)))
+
+    def __deskewed(self, image):
+        moments = cv2.moments(image)
+        if np.absolute(moments["mu02"]) < 0.01:
+            return image.copy()
+        skew = moments["mu11"] / moments["mu02"]
+        M = np.float32([[1, skew, (-0.5 * self.__SZ[1] * skew)], [0, 1, 0]])
+        img = cv2.warpAffine(image, M, self.__SZ, flags=self.__affine_flags) 
+        return image
 
     def __predict(self, grid):
         sample = grid[0].reshape(-1, 128, 64, 1) / 255.0
@@ -102,6 +114,7 @@ class Inference:
         for grid in grids:
             pred = self.__predict(grid)
             self.__draw(pred, (0, 255, 0), (255, 255, 0))
+        cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_4\\prediction.jpg", self.image)
 
 
 if __name__ == "__main__":
