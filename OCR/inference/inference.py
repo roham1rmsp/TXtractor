@@ -5,7 +5,7 @@ import imutils
 import numpy as np
 import autocorrect
 from tensorflow import lite
-from process import Process
+from utils import Process
 from imutils.contours import sort_contours
 
 
@@ -20,15 +20,34 @@ class Inference:
         self.__chars = list(
             string.digits + string.ascii_uppercase)
         self.paths = [os.path.sep.join(name) for name in [
-            ["CHARS74K", "binded", "binded.tflite"]
+            ["CHARS74K", "type_clf", "base.tflite"],
+            ["CHARS74K", "digit_clf", "sub2.tflite"],
+            ["CHARS74K", "case_clf", "case_clf.tflite"],
+            ["CHARS74K", "letter_clf", "sub1.tflite"]
         ]]
         self.paths = [os.path.sep.join([os.getcwd().replace(
             "inference", "models"), path]) for path in self.paths]
 
-        self.__model = lite.Interpreter(self.paths[0])
-        self.__model.allocate_tensors()
-        self.__model_in = self.__model.get_input_details()
-        self.__model_out = self.__model.get_output_details()
+        # Binary classifier between digits and letters
+        self.__base = lite.Interpreter(self.paths[0])
+        self.__base.allocate_tensors()
+        self.__base_in = self.__base.get_input_details()
+        self.__base_out = self.__base.get_output_details()
+        # Categorical classifier for 10 digits
+        self.__digit_clf = lite.Interpreter(self.paths[1])
+        self.__digit_clf.allocate_tensors()
+        self.__digit_clf_in = self.__digit_clf.get_input_details()
+        self.__digit_clf_out = self.__digit_clf.get_output_details()
+        # Binary classifier between upper and lower case letters
+        self.__case_clf = lite.Interpreter(self.paths[2])
+        self.__case_clf.allocate_tensors()
+        self.__case_clf_in = self.__case_clf.get_input_details()
+        self.__case_clf_out = self.__case_clf.get_output_details()
+
+        self.__letter_clf = lite.Interpreter(self.paths[3])
+        self.__letter_clf.allocate_tensors()
+        self.__letter_clf_in = self.__letter_clf.get_input_details()
+        self.__letter_clf_out = self.__letter_clf.get_output_details()
         self.__SZ = (128, 64)
         self.__affine_flags = cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR
 
@@ -76,8 +95,8 @@ class Inference:
         padded = cv2.resize(grid, (64, 128))
         blank = np.ones((154, 90), np.uint8) * 255
         blank[13:141, 13:77] = padded
-        cv2.imshow("", cv2.resize(self.__deskewed(blank), (64, 128)))
-        cv2.waitKey(0)
+        # cv2.imshow("", cv2.resize(self.__deskewed(blank), (64, 128)))
+        # cv2.waitKey(0)
         return np.float32(cv2.resize(self.__deskewed(blank), (64, 128)))
 
     def __deskewed(self, image):
@@ -91,10 +110,23 @@ class Inference:
 
     def __predict(self, grid):
         sample = grid[0].reshape(-1, 128, 64, 1) / 255.0
-        self.__model.set_tensor(self.__model_in[0]["index"], sample)
-        self.__model.invoke()
-        pred = np.argmax(self.__model.get_tensor(self.__model_out[0]["index"]))
-        return (self.__chars[pred], grid[1])
+        self.__base.set_tensor(self.__base_in[0]["index"], sample)
+        self.__base.invoke()
+        pred = np.argmax(self.__base.get_tensor(self.__base_out[0]["index"]))
+        if pred:
+            self.__case_clf.set_tensor(self.__case_clf_in[0]["index"], sample)
+            self.__case_clf.invoke()
+            pred = np.argmax(self.__case_clf.get_tensor(self.__case_clf_out[0]["index"]))
+            self.__letter_clf.set_tensor(self.__letter_clf_in[0]["index"], sample)
+            self.__letter_clf.invoke()
+            pred = np.argmax(self.__letter_clf.get_tensor(self.__letter_clf_out[0]["index"]))
+            return (self.__chars[pred + 10], grid[1])
+
+        
+        self.__digit_clf.set_tensor(self.__digit_clf_in[0]["index"], sample)
+        self.__digit_clf.invoke()
+        pred = np.argmax(self.__digit_clf.get_tensor(self.__digit_clf_out[0]["index"]))
+        return (self.__chars[pred], grid[1]) 
 
     def __draw(self, predictions: tuple, color1: tuple,
                color2: tuple) -> np.ndarray:  # Visualize the outcome
@@ -113,8 +145,11 @@ class Inference:
         grids = self.__process_grids(cnts)
         for grid in grids:
             pred = self.__predict(grid)
-            self.__draw(pred, (0, 255, 0), (255, 255, 0))
-        cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_4\\prediction.jpg", self.image)
+            if pred is not None:
+                self.__draw(pred, (0, 255, 0), (255, 255, 0))
+        # cv2.imshow("winname", self.image)
+        # cv2.waitKey(0)
+        # cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_5\\prediction.jpg", self.image)
 
 
 if __name__ == "__main__":
