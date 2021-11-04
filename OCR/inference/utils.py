@@ -24,3 +24,6 @@ class Process:
     def _close(self, image: np.ndarray) -> np.ndarray:
         return cv2.dilate(cv2.morphologyEx(image,
                  cv2.MORPH_CLOSE, self.__kernel), self.__kernel, iterations=1)
+
+class CleanUp:
+    pass
