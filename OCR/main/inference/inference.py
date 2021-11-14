@@ -5,7 +5,6 @@ from text.separator import Cluster
 from text.serialization import SaveAsText
 
 
-
 class Infer:
     def __init__(self):
         self.path = os.path.sep.join([os.getcwd().replace(

@@ -52,8 +52,10 @@ class Extract:
 
     def _process(self, image):
         self.gray = self.prep._to_gray(image)
-        denosed = self.prep._clahe(self.prep._denose(self.gray))
-        blurred = self.prep._blur(denosed)
+        cleared = self.prep._clahe(self.prep._clear(self.gray))
+        if not self.prep._detect_noise(cleared):
+            cleared = self.prep._denoise(cleared)
+        blurred = self.prep._blur(cleared)
         return self.prep._close(self.prep._find_edges(blurred))
 
     def _get_contours(self):
@@ -104,7 +106,7 @@ class Extract:
             return image.copy()
         skew = moments["mu11"] / moments["mu02"]
         M = np.float32([[1, skew, (-0.5 * self.SZ[1] * skew)], [0, 1, 0]])
-        img = cv2.warpAffine(image, M, self.SZ, flags=self.affine_flags) 
+        img = cv2.warpAffine(image, M, self.SZ, flags=self.affine_flags)
         return image
 
     def _predict(self, grid):
@@ -115,20 +117,22 @@ class Extract:
         if pred:
             self.case_clf.set_tensor(self.case_clf_in[0]["index"], sample)
             self.case_clf.invoke()
-            pred = np.argmax(self.case_clf.get_tensor(self.case_clf_out[0]["index"]))
+            pred = np.argmax(self.case_clf.get_tensor(
+                self.case_clf_out[0]["index"]))
             self.letter_clf.set_tensor(self.letter_clf_in[0]["index"], sample)
             self.letter_clf.invoke()
-            pred = np.argmax(self.letter_clf.get_tensor(self.letter_clf_out[0]["index"]))
+            pred = np.argmax(self.letter_clf.get_tensor(
+                self.letter_clf_out[0]["index"]))
             return (self.chars[pred + 10], grid[1])
 
-        
         self.digit_clf.set_tensor(self.digit_clf_in[0]["index"], sample)
         self.digit_clf.invoke()
-        pred = np.argmax(self.digit_clf.get_tensor(self.digit_clf_out[0]["index"]))
-        return (self.chars[pred], grid[1]) 
+        pred = np.argmax(self.digit_clf.get_tensor(
+            self.digit_clf_out[0]["index"]))
+        return (self.chars[pred], grid[1])
 
     def _draw(self, predictions: tuple, color1: tuple,
-               color2: tuple) -> np.ndarray:  # Visualize the outcome
+              color2: tuple) -> np.ndarray:  # Visualize the outcome
         x, y, w, h = predictions[1]
         char = predictions[0]
         cv2.rectangle(self.image, (x, y), (x + w, y + h), color1, 2)
@@ -151,4 +155,3 @@ class Extract:
         # cv2.waitKey(0)
         # cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_5\\prediction.jpg", self.image)
         return coords, x_letters
-
