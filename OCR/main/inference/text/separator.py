@@ -1,9 +1,9 @@
-from sklearn.cluster import DBSCAN
-from utils import CleanUp
-import numpy as np
-import warnings
 import os
 import sys
+import warnings
+import numpy as np
+from utils import CleanUp
+from sklearn.cluster import DBSCAN
 sys.path.append('..')
 
 warnings.filterwarnings("ignore")

@@ -77,8 +77,8 @@ class NoiseDetector(NoiseAbstract):
 
 
 class Process(Denoiser, NoiseDetector):
-    __kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    __clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
+    __KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    __CLAHE = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
 
     def _to_gray(self, image: np.ndarray) -> np.ndarray:
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -93,7 +93,7 @@ class Process(Denoiser, NoiseDetector):
         return cv2.fastNlMeansDenoising(image, None, 15, 7, 21)
 
     def _clahe(self, image: np.ndarray) -> np.ndarray:
-        return self.__clahe.apply(image)
+        return self.__CLAHE.apply(image)
 
     def _blur(self, image: np.ndarray) -> np.ndarray:
         return cv2.GaussianBlur(image, (5, 5), 0)
@@ -103,8 +103,8 @@ class Process(Denoiser, NoiseDetector):
 
     def _close(self, image: np.ndarray) -> np.ndarray:
         return cv2.dilate(cv2.morphologyEx(image,
-                                           cv2.MORPH_CLOSE, self.__kernel),
-                          self.__kernel, iterations=1)
+                                           cv2.MORPH_CLOSE, self.__KERNEL),
+                          self.__KERNEL, iterations=1)
 
 
 class CleanUp:
