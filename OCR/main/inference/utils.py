@@ -5,15 +5,13 @@ import numpy as np
 from spellchecker import SpellChecker
 
 denoiser_path = os.path.sep.join([
-    os.getcwd().replace(
-        "inference", "models"),
-    "NOISE", "denoiser", "denoiser.pickle"
+    os.getcwd(), "models", "NOISE",
+    "denoiser", "denoiser.pickle"
 ])
 
 noise_detector_path = os.path.sep.join([
-    os.getcwd().replace(
-        "inference", "models"),
-    "NOISE", "noise_detector", "noise_detector.pickle"
+    os.getcwd(), "models", "NOISE",
+    "noise_detector", "noise_detector.pickle"
 ])
 
 
@@ -77,7 +75,7 @@ class NoiseDetector(NoiseAbstract):
 
 
 class Process(Denoiser, NoiseDetector):
-    __KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    __KERNEL = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     __CLAHE = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
 
     def _to_gray(self, image: np.ndarray) -> np.ndarray:
@@ -104,6 +102,11 @@ class Process(Denoiser, NoiseDetector):
     def _close(self, image: np.ndarray) -> np.ndarray:
         return cv2.dilate(cv2.morphologyEx(image,
                                            cv2.MORPH_CLOSE, self.__KERNEL),
+                          self.__KERNEL, iterations=1)
+
+    def _open(self, image: np.ndarray) -> np.ndarray:
+        return cv2.erode(cv2.morphologyEx(image,
+                                           cv2.MORPH_OPEN, self.__KERNEL),
                           self.__KERNEL, iterations=1)
 
 

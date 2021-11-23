@@ -1,3 +1,5 @@
+import os
+
 class SaveAsText:
     def __init__(self, words):
         self.words = words

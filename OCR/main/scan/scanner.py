@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from align import Aligner
-from utils import Process, Suppress
+from scan.align import Aligner
+from scan.utils import Process, Suppress
 
 
 class Scanner:
@@ -30,6 +30,6 @@ class Scanner:
             new_pts = np.concatenate((sorted(new_pts[:2],
                                              key=lambda x: x[0]), sorted(
                 new_pts[2:], key=lambda x: x[0], reverse=True)))
-            aligned = Aligner(new_pts).snip(image)
+            aligned = Aligner(new_pts).snip(self.image)
             return aligned
         return None

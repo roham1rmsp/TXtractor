@@ -2,7 +2,7 @@ import os
 import sys
 import warnings
 import numpy as np
-from utils import CleanUp
+from inference.utils import CleanUp
 from sklearn.cluster import DBSCAN
 sys.path.append('..')
 
@@ -37,7 +37,7 @@ class Cluster:
     def sepr(self):
         self._sort()
         self.pts = self._scale()
-        dbscan = DBSCAN(eps=0.2, min_samples=2)
+        dbscan = DBSCAN(eps=0.1, min_samples=2)
         dbscan.fit(self.pts)
         labels = dbscan.labels_
         for num in np.unique(labels):

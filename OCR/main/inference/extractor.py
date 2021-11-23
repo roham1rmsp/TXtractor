@@ -3,26 +3,24 @@ import cv2
 import string
 import imutils
 import numpy as np
-from utils import Process
 from tensorflow import lite
+from inference.utils import Process
 from imutils.contours import sort_contours
 
 
 class Extract:
-    def __init__(self, path: str):
-        if not os.path.isfile(path):
-            pass
-
-        self.image = cv2.resize(cv2.imread(path), (640, 480))
+    def __init__(self, image):
+        self.image = image
         self.W, self.H = self.image.shape[:2][::-1]
+        self.image = self.image[10: self.H-10, 10: self.H-10]
         self.prep = Process()
         self.chars = list(
             string.digits + string.ascii_uppercase)
         self.paths = [os.path.sep.join(name) for name in [
-            ["CHARS74K", "type_clf", "base.tflite"],
-            ["CHARS74K", "digit_clf", "sub2.tflite"],
-            ["CHARS74K", "case_clf", "case_clf.tflite"],
-            ["CHARS74K", "letter_clf", "sub1.tflite"]
+            ["models", "CHARS74K", "type_clf", "base.tflite"],
+            ["models", "CHARS74K", "digit_clf", "sub2.tflite"],
+            ["models", "CHARS74K", "case_clf", "case_clf.tflite"],
+            ["models", "CHARS74K", "letter_clf", "sub1.tflite"]
         ]]
         self.paths = [os.path.sep.join([os.getcwd().replace(
             "inference", "models"), path]) for path in self.paths]
@@ -56,7 +54,8 @@ class Extract:
         if not self.prep._detect_noise(cleared):
             cleared = self.prep._denoise(cleared)
         blurred = self.prep._blur(cleared)
-        return self.prep._close(self.prep._find_edges(blurred))
+        return cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                             cv2.THRESH_BINARY_INV, 9, 2)
 
     def _get_contours(self):
         edges = self._process(self.image)
@@ -150,8 +149,5 @@ class Extract:
             center = list([(pt[0] + pt[2]) // 2, (pt[1] + pt[3]) // 2])
             coords.append(center)
             x_letters.append(pred[0])
-            # self.__draw(pred, (0, 255, 0), (255, 255, 0))
-        # cv2.imshow("winname", self.image)
-        # cv2.waitKey(0)
         # cv2.imwrite("C:\\Users\\moeid\\Desktop\\TXractor\\TXtractor\\OCR\\images\\experiment_5\\prediction.jpg", self.image)
         return coords, x_letters
